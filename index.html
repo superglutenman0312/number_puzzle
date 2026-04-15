@@ -211,7 +211,7 @@
     <div id="menu">
         <div class="menu-top-actions">
             <button class="btn help-btn" onclick="openHelp()">❓ 遊戲說明</button>
-            <button class="btn leaderboard-btn" onclick="openLeaderboard()">🏆 世界排行榜</button>
+            <button class="btn leaderboard-btn" onclick="openLeaderboard()">🏆 排行榜</button>
         </div>
         </div>
 
@@ -492,7 +492,7 @@
                 if (!prevBest || seconds < parseInt(prevBest)) {
                     localStorage.setItem(recordKey, seconds); 
                     setTimeout(() => {
-                        let playerName = prompt(`🎉 破紀錄啦！\n時間：${formatTime(seconds)}\n步數：${moveCount}\n\n請輸入您的大名以更新世界排行榜：`, "匿名玩家");
+                        let playerName = prompt(`🎉 破紀錄啦！\n時間：${formatTime(seconds)}\n步數：${moveCount}\n\n請輸入您的大名以更新排行榜：`, "匿名玩家");
                         if (playerName === null || playerName.trim() === "") {
                             playerName = "匿名玩家";
                         } else {
@@ -517,7 +517,7 @@
                 moves: moves,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             }).then(() => {
-                alert("新紀錄已成功更新至世界排行榜！");
+                alert("新紀錄已成功更新至排行榜！");
                 exitGame();
             }).catch((error) => {
                 console.error("上傳失敗: ", error);
