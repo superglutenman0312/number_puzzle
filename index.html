@@ -15,6 +15,7 @@
             --tile-bg: #ffffff;
             --tile-color: #333333;
             --record-color: #ff9500;
+            --help-color: #34c759; /* 說明按鈕的綠色 */
         }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -40,6 +41,14 @@
             max-width: 350px;
             padding-bottom: 0; 
         }
+        
+        /* 選單上方按鈕群組 */
+        .menu-top-actions {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 5px;
+        }
+        
         .btn {
             background-color: var(--primary-color);
             color: white;
@@ -54,11 +63,9 @@
             align-items: center;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
-        .btn.leaderboard-btn {
-            background-color: var(--record-color);
-            justify-content: center;
-            margin-bottom: 10px;
-        }
+        .btn.leaderboard-btn { background-color: var(--record-color); flex: 1; justify-content: center; }
+        .btn.help-btn { background-color: var(--help-color); flex: 1; justify-content: center; }
+        
         .btn .record-text {
             font-size: 12px;
             font-weight: normal;
@@ -88,30 +95,10 @@
             box-sizing: border-box;
             gap: 8px;
         }
-        .header-top {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .header-bottom {
-            display: flex;
-            justify-content: center;
-            font-size: 13px;
-            color: var(--record-color);
-            font-weight: bold;
-        }
-        .back-btn { 
-            background-color: #ff3b30; 
-            padding: 6px 12px;
-            font-size: 14px;
-            width: auto;
-        }
-        .stats {
-            display: flex;
-            gap: 12px;
-            font-size: 15px;
-            font-weight: 600;
-        }
+        .header-top { display: flex; justify-content: space-between; align-items: center; }
+        .header-bottom { display: flex; justify-content: center; font-size: 13px; color: var(--record-color); font-weight: bold; }
+        .back-btn { background-color: #ff3b30; padding: 6px 12px; font-size: 14px; width: auto; }
+        .stats { display: flex; gap: 12px; font-size: 15px; font-weight: 600; }
         
         #board {
             position: relative;
@@ -147,7 +134,6 @@
             box-shadow: inset 0 0 1px rgba(0,0,0,0.1);
         }
 
-        /* --- 排行榜滾輪優化 --- */
         .lb-board {
             background: #fff;
             width: 90%;
@@ -157,41 +143,18 @@
             box-shadow: 0 4px 10px rgba(0,0,0,0.1);
             box-sizing: border-box;
         }
-        .lb-selector {
-            width: 100%;
-            padding: 10px;
-            font-size: 16px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            border: 1px solid #ccc;
-        }
-        .lb-list {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-            /* 開啟滾輪：設定最大高度與溢出滾動 */
-            max-height: 400px; 
-            overflow-y: auto;
-            /* 讓滾輪在 iOS 上更順暢 */
-            -webkit-overflow-scrolling: touch; 
-        }
-        /* 美化滾輪樣式 (非必選，但在桌機瀏覽器較好看) */
+        .lb-selector { width: 100%; padding: 10px; font-size: 16px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #ccc; }
+        .lb-list { list-style: none; padding: 0; margin: 0; max-height: 400px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
         .lb-list::-webkit-scrollbar { width: 6px; }
         .lb-list::-webkit-scrollbar-track { background: #f1f1f1; }
         .lb-list::-webkit-scrollbar-thumb { background: #ccc; border-radius: 10px; }
-
-        .lb-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 12px 5px;
-            border-bottom: 1px solid #eee;
-            font-size: 15px;
-        }
+        .lb-item { display: flex; justify-content: space-between; padding: 12px 5px; border-bottom: 1px solid #eee; font-size: 15px; }
         .lb-item:last-child { border-bottom: none; }
         .lb-rank { font-weight: bold; color: var(--primary-color); width: 35px; flex-shrink: 0; }
         .lb-name { flex-grow: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 10px; }
         .lb-score { font-weight: bold; color: #555; flex-shrink: 0; text-align: right; }
 
+        /* --- 教學提示框優化 --- */
         #instruction-modal {
             display: none; 
             position: fixed;
@@ -205,8 +168,8 @@
             background: white;
             padding: 25px 20px;
             border-radius: 16px;
-            width: 80%;
-            max-width: 320px;
+            width: 85%;
+            max-width: 340px;
             text-align: center;
             box-shadow: 0 10px 25px rgba(0,0,0,0.2);
             animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -215,8 +178,19 @@
             0% { transform: scale(0.8); opacity: 0; }
             100% { transform: scale(1); opacity: 1; }
         }
-        .modal-content h2 { margin-top: 0; font-size: 22px; color: #333; }
-        .modal-content p { font-size: 16px; color: #555; line-height: 1.5; margin-bottom: 20px; }
+        .modal-content h2 { margin-top: 0; font-size: 22px; color: #333; margin-bottom: 15px; }
+        
+        .instruction-text {
+            text-align: left;
+            font-size: 15px;
+            color: #444;
+            line-height: 1.6;
+            margin-bottom: 20px;
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 10px;
+        }
+        
         .checkbox-label {
             display: flex;
             align-items: center;
@@ -235,8 +209,11 @@
     <h1>數字華容道</h1>
 
     <div id="menu">
-        <button class="btn leaderboard-btn" onclick="openLeaderboard()">🏆 世界排行榜</button>
-    </div>
+        <div class="menu-top-actions">
+            <button class="btn help-btn" onclick="openHelp()">❓ 遊戲說明</button>
+            <button class="btn leaderboard-btn" onclick="openLeaderboard()">🏆 世界排行榜</button>
+        </div>
+        </div>
 
     <div id="game-container">
         <div class="header">
@@ -279,17 +256,22 @@
 
     <div id="instruction-modal">
         <div class="modal-content">
-            <h2>遊戲操作說明 💡</h2>
-            <p>本遊戲請使用 <strong>「點擊」</strong> 來移動方塊。<br><br><span style="font-size:14px; color:#ff3b30;">⚠️ 請勿用滑動的，以免觸發網頁重新整理！</span></p>
-            <label class="checkbox-label">
+            <h2>遊戲說明 💡</h2>
+            <div class="instruction-text">
+                <strong>🎯 遊戲目標：</strong><br>
+                將打亂的數字，按照「由小到大、由左至右、由上到下」的順序重新排列，並將空格留在最後一格即為過關。<br><br>
+                <strong>👆 操作方式：</strong><br>
+                請使用 <strong>「點擊」</strong> 空格旁邊的數字來移動方塊。<br><br>
+                <span style="color:#ff3b30; font-size: 14px;">⚠️ 注意：請勿使用「滑動」，以免觸發手機瀏覽器的重新整理功能。</span>
+            </div>
+            <label class="checkbox-label" id="checkbox-container">
                 <input type="checkbox" id="dont-show-again"> 不再顯示此提示
             </label>
-            <button class="btn" onclick="confirmInstruction()">開始挑戰</button>
+            <button class="btn" id="modal-action-btn" onclick="confirmInstruction()">開始挑戰</button>
         </div>
     </div>
 
     <script>
-        // --- Firebase 初始化 ---
         const firebaseConfig = {
             apiKey: "AIzaSyBG06csgn7_FxcNXIRWETZMLc7ronAq0t0",
             authDomain: "number-puzzle-295af.firebaseapp.com",
@@ -323,9 +305,9 @@
 
         function initMenu() {
             const menu = document.getElementById('menu');
-            const lbBtn = menu.children[0]; 
+            const topActions = menu.children[0]; 
             menu.innerHTML = '';
-            menu.appendChild(lbBtn);
+            menu.appendChild(topActions);
 
             for (let i = 3; i <= 12; i++) {
                 const btn = document.createElement('button');
@@ -338,13 +320,34 @@
             }
         }
 
+        // --- 說明 Modal 控制邏輯 ---
+        
+        // 1. 從主選單打開純說明
+        function openHelp() {
+            document.getElementById('instruction-modal').style.display = 'flex';
+            document.getElementById('checkbox-container').style.display = 'none'; // 隱藏勾選框
+            document.getElementById('modal-action-btn').textContent = '我知道了';
+            document.getElementById('modal-action-btn').onclick = closeHelp; // 改為純關閉功能
+        }
+
+        function closeHelp() {
+            document.getElementById('instruction-modal').style.display = 'none';
+        }
+
+        // 2. 從關卡打開教學與確認
         function startGame(size) {
             pendingSize = size;
             const skipTutorial = localStorage.getItem('klotski_skip_tutorial');
+            
             if (skipTutorial === 'true') {
                 startActualGame(size);
             } else {
+                // 恢復 Modal 為開始遊戲的狀態
+                document.getElementById('checkbox-container').style.display = 'flex';
                 document.getElementById('dont-show-again').checked = false;
+                document.getElementById('modal-action-btn').textContent = '開始挑戰';
+                document.getElementById('modal-action-btn').onclick = confirmInstruction;
+                
                 document.getElementById('instruction-modal').style.display = 'flex';
             }
         }
@@ -540,7 +543,6 @@
             content.innerHTML = '<li style="text-align:center; color:#999; padding:20px;">載入中...</li>';
             const collectionName = `records_${size}`;
             
-            // 關鍵修改：移除 .limit(10)，顯示所有成績
             db.collection(collectionName)
               .orderBy("time", "asc")
               .get()
