@@ -28,6 +28,8 @@
             justify-content: center; 
             padding-bottom: 8vh; 
             box-sizing: border-box; 
+            /* 【關鍵新增】封印手機瀏覽器的下拉重新整理功能 */
+            overscroll-behavior: none; 
         }
         h1 { margin-top: 0; margin-bottom: 20px; color: #333; }
         
@@ -146,7 +148,6 @@
             box-shadow: inset 0 0 1px rgba(0,0,0,0.1);
         }
 
-        /* 排行榜專用樣式 */
         .lb-board {
             background: #fff;
             width: 90%;
@@ -180,6 +181,44 @@
         .lb-rank { font-weight: bold; color: var(--primary-color); width: 30px; }
         .lb-name { flex-grow: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .lb-score { font-weight: bold; color: #555; }
+
+        /* --- 新增：提示框 (Modal) 樣式 --- */
+        #instruction-modal {
+            display: none; 
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background: white;
+            padding: 25px 20px;
+            border-radius: 16px;
+            width: 80%;
+            max-width: 320px;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        @keyframes popIn {
+            0% { transform: scale(0.8); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .modal-content h2 { margin-top: 0; font-size: 22px; color: #333; }
+        .modal-content p { font-size: 16px; color: #555; line-height: 1.5; margin-bottom: 20px; }
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            font-size: 15px;
+            color: #666;
+            cursor: pointer;
+        }
+        .checkbox-label input { margin-right: 8px; transform: scale(1.2); }
+        .modal-content .btn { width: 100%; justify-content: center; font-size: 18px; }
     </style>
 </head>
 <body>
@@ -188,7 +227,7 @@
 
     <div id="menu">
         <button class="btn leaderboard-btn" onclick="openLeaderboard()">🏆 世界排行榜</button>
-        </div>
+    </div>
 
     <div id="game-container">
         <div class="header">
@@ -229,6 +268,17 @@
         </div>
     </div>
 
+    <div id="instruction-modal">
+        <div class="modal-content">
+            <h2>遊戲操作說明 💡</h2>
+            <p>本遊戲請使用 <strong>「點擊」</strong> 來移動方塊。<br><br><span style="font-size:14px; color:#ff3b30;">⚠️ 請勿用滑動的，以免觸發網頁重新整理！</span></p>
+            <label class="checkbox-label">
+                <input type="checkbox" id="dont-show-again"> 不再顯示此提示
+            </label>
+            <button class="btn" onclick="confirmInstruction()">開始挑戰</button>
+        </div>
+    </div>
+
     <script>
         // --- Firebase 初始化 ---
         const firebaseConfig = {
@@ -243,20 +293,20 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        // --- 1. 產生與讀取隱形身份證 (Device ID) ---
+        // 產生與讀取隱形身份證 (Device ID)
         function getOrCreateDeviceId() {
             let deviceId = localStorage.getItem('klotski_device_id');
             if (!deviceId) {
-                // 如果沒有，就產生一組隨機碼當作專屬 ID
                 deviceId = 'user_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
                 localStorage.setItem('klotski_device_id', deviceId);
             }
             return deviceId;
         }
-        const DEVICE_ID = getOrCreateDeviceId(); // 網頁載入時立刻取得身分證
+        const DEVICE_ID = getOrCreateDeviceId();
 
-        // --- 遊戲邏輯 ---
+        // 遊戲變數
         let currentSize = 3;
+        let pendingSize = 3; // 暫存玩家選擇的尺寸，等確認提示框後才使用
         let boardArr = [];
         let moveCount = 0;
         let tilesDOM = {};
@@ -266,7 +316,6 @@
 
         function initMenu() {
             const menu = document.getElementById('menu');
-            // 保留原本的第一個子元素 (排行榜按鈕)
             const lbBtn = menu.children[0]; 
             menu.innerHTML = '';
             menu.appendChild(lbBtn);
@@ -283,7 +332,37 @@
             }
         }
 
+        // --- 第一段：玩家點擊尺寸按鈕 ---
         function startGame(size) {
+            pendingSize = size;
+            const skipTutorial = localStorage.getItem('klotski_skip_tutorial');
+            
+            if (skipTutorial === 'true') {
+                // 如果已經勾選過「不再提醒」，直接開始遊戲
+                startActualGame(size);
+            } else {
+                // 否則，跳出提示框 (不開始計時)
+                // 每次跳出時預設把勾勾取消
+                document.getElementById('dont-show-again').checked = false;
+                document.getElementById('instruction-modal').style.display = 'flex';
+            }
+        }
+
+        // --- 第二段：玩家按下提示框的「開始挑戰」 ---
+        function confirmInstruction() {
+            const isChecked = document.getElementById('dont-show-again').checked;
+            if (isChecked) {
+                // 如果打勾，紀錄在 localStorage 中
+                localStorage.setItem('klotski_skip_tutorial', 'true');
+            }
+            
+            // 隱藏提示框，正式載入盤面並開始計時
+            document.getElementById('instruction-modal').style.display = 'none';
+            startActualGame(pendingSize);
+        }
+
+        // --- 第三段：真正載入畫面與計時的邏輯 ---
+        function startActualGame(size) {
             currentSize = size;
             moveCount = 0;
             seconds = 0;
@@ -300,7 +379,7 @@
             
             generateBoard(size);
             initBoardDOM();
-            startTimer();
+            startTimer(); // 此時才開始計時
         }
 
         function formatTime(s) {
@@ -416,7 +495,6 @@
             }
         }
 
-        // --- 2. 修改過關判定 (只在破個人紀錄時才跳出輸入框) ---
         function checkWin() {
             const isWin = boardArr.every((num, index) => {
                 if (index === boardArr.length - 1) return num === 0;
@@ -430,27 +508,21 @@
                 const recordKey = `bestTime_${currentSize}`;
                 const prevBest = localStorage.getItem(recordKey);
                 
-                // 判斷是否為「個人新紀錄」
                 if (!prevBest || seconds < parseInt(prevBest)) {
-                    // 🎉 是新紀錄！
-                    localStorage.setItem(recordKey, seconds); // 更新本機紀錄
+                    localStorage.setItem(recordKey, seconds); 
 
                     setTimeout(() => {
-                        // 跳出輸入框詢問暱稱
                         let playerName = prompt(`🎉 破紀錄啦！\n時間：${formatTime(seconds)}\n步數：${moveCount}\n\n請輸入您的大名以更新世界排行榜：`, "匿名玩家");
                         
-                        // 處理玩家取消或故意輸入空白的狀況
                         if (playerName === null || playerName.trim() === "") {
                             playerName = "匿名玩家";
                         } else {
                             playerName = playerName.trim();
                         }
                         
-                        // 帶著成績和暱稱上傳雲端
                         saveToCloud(playerName, seconds, moveCount);
                     }, 150);
                 } else {
-                    // 🎈 沒有破個人紀錄，純恭喜，不存資料庫
                     setTimeout(() => {
                         alert(`恭喜完成！\n時間：${formatTime(seconds)}\n步數：${moveCount}\n(未打破您的個人最佳紀錄 ${formatTime(parseInt(prevBest))})`);
                         exitGame();
@@ -459,12 +531,9 @@
             }
         }
 
-        // --- 3. 修改上傳邏輯 (使用 DEVICE_ID 覆蓋舊資料) ---
         function saveToCloud(name, time, moves) {
             const collectionName = `records_${currentSize}`;
             
-            // 關鍵改變：使用 .doc(DEVICE_ID).set(...) 而不是 .add(...)
-            // 這代表如果這個 DEVICE_ID 已經有資料，就會整筆覆蓋掉，確保一人只有一筆最佳成績
             db.collection(collectionName).doc(DEVICE_ID).set({
                 name: name,
                 time: time,
@@ -498,7 +567,6 @@
 
             const collectionName = `records_${size}`;
             
-            // 抓取前 10 名，按照時間由小到大排序
             db.collection(collectionName)
               .orderBy("time", "asc")
               .limit(10)
