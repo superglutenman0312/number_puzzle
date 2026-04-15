@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>數字華容道</title>
+    <style>
+        :root {
+            --bg-color: #f0f2f5;
+            --primary-color: #007aff;
+            --tile-bg: #ffffff;
+            --tile-color: #333333;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            touch-action: manipulation;
+        }
+        h1 { margin-top: 40px; color: #333; }
+        
+        #menu {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 20px;
+            width: 80%;
+            max-width: 300px;
+        }
+        .btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .btn:active { transform: scale(0.98); }
+
+        #game-container {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+        /* 調整 Header 佈局 */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 90%;
+            max-width: 400px;
+            margin: 15px 0;
+            background: #fff;
+            padding: 10px 15px;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            box-sizing: border-box;
+        }
+        .back-btn { 
+            background-color: #ff3b30; 
+            padding: 8px 15px;
+            font-size: 14px;
+        }
+        .stats {
+            display: flex;
+            gap: 15px;
+            font-size: 16px;
+            font-weight: 600;
+            color: #444;
+        }
+        
+        #board {
+            position: relative;
+            background-color: #bbb;
+            border-radius: 8px;
+            width: 90vmin;
+            max-width: 400px;
+            height: 90vmin;
+            max-height: 400px;
+            overflow: hidden;
+        }
+        
+        .tile-wrapper {
+            position: absolute;
+            /* 動畫設為 0.1s */
+            transition: top 0.1s ease-in-out, left 0.1s ease-in-out;
+            padding: 2.5px; 
+            box-sizing: border-box;
+        }
+        
+        .tile {
+            width: 100%;
+            height: 100%;
+            background-color: var(--tile-bg);
+            color: var(--tile-color);
+            font-size: 24px;
+            font-weight: bold;
+            border-radius: 4px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+            box-shadow: inset 0 0 2px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body>
+
+    <h1>數字華容道</h1>
+
+    <div id="menu"></div>
+
+    <div id="game-container">
+        <div class="header">
+            <button class="btn back-btn" onclick="exitGame()">返回</button>
+            <div class="stats">
+                <span>步數: <span id="moves">0</span></span>
+                <span>時間: <span id="timer">00:00</span></span>
+            </div>
+        </div>
+        <div id="board"></div>
+    </div>
+
+    <script>
+        let currentSize = 3;
+        let boardArr = [];
+        let moveCount = 0;
+        let tilesDOM = {};
+        
+        // 移除 isAnimating，新增 isGameWon 防止過關後還能亂點
+        let isGameWon = false; 
+
+        let seconds = 0;
+        let timerId = null;
+
+        function initMenu() {
+            const menu = document.getElementById('menu');
+            menu.innerHTML = '';
+            for (let i = 3; i <= 9; i++) {
+                const btn = document.createElement('button');
+                btn.className = 'btn';
+                btn.textContent = `${i} x ${i} 拼圖`;
+                btn.onclick = () => startGame(i);
+                menu.appendChild(btn);
+            }
+        }
+
+        function startGame(size) {
+            currentSize = size;
+            moveCount = 0;
+            seconds = 0;
+            isGameWon = false; // 遊戲開始時重置狀態
+            
+            document.getElementById('moves').textContent = moveCount;
+            document.getElementById('timer').textContent = "00:00";
+            document.getElementById('menu').style.display = 'none';
+            document.getElementById('game-container').style.display = 'flex';
+            
+            generateBoard(size);
+            initBoardDOM();
+            startTimer();
+        }
+
+        function startTimer() {
+            if (timerId) clearInterval(timerId);
+            timerId = setInterval(() => {
+                seconds++;
+                const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
+                const secs = (seconds % 60).toString().padStart(2, '0');
+                document.getElementById('timer').textContent = `${mins}:${secs}`;
+            }, 1000);
+        }
+
+        function stopTimer() {
+            clearInterval(timerId);
+            timerId = null;
+        }
+
+        function exitGame() {
+            stopTimer();
+            document.getElementById('menu').style.display = 'flex';
+            document.getElementById('game-container').style.display = 'none';
+        }
+
+        function generateBoard(size) {
+            const totalTiles = size * size;
+            boardArr = Array.from({length: totalTiles - 1}, (_, i) => i + 1);
+            boardArr.push(0);
+
+            let emptyIdx = totalTiles - 1;
+            const shuffleMoves = size * size * 50;
+
+            for (let i = 0; i < shuffleMoves; i++) {
+                const neighbors = getNeighbors(emptyIdx, size);
+                const randomNeighbor = neighbors[Math.floor(Math.random() * neighbors.length)];
+                [boardArr[emptyIdx], boardArr[randomNeighbor]] = [boardArr[randomNeighbor], boardArr[emptyIdx]];
+                emptyIdx = randomNeighbor;
+            }
+        }
+
+        function getNeighbors(index, size) {
+            const neighbors = [];
+            const row = Math.floor(index / size);
+            const col = index % size;
+            if (row > 0) neighbors.push(index - size);
+            if (row < size - 1) neighbors.push(index + size);
+            if (col > 0) neighbors.push(index - 1);
+            if (col < size - 1) neighbors.push(index + 1);
+            return neighbors;
+        }
+
+        function initBoardDOM() {
+            const board = document.getElementById('board');
+            board.innerHTML = '';
+            tilesDOM = {};
+
+            boardArr.forEach((num, index) => {
+                if (num === 0) return;
+
+                const wrapper = document.createElement('div');
+                wrapper.className = 'tile-wrapper';
+                wrapper.style.width = `${100 / currentSize}%`;
+                wrapper.style.height = `${100 / currentSize}%`;
+                
+                updateTilePosition(wrapper, index);
+
+                const tile = document.createElement('div');
+                tile.className = 'tile';
+                tile.textContent = num;
+                if (currentSize > 6) tile.style.fontSize = '14px';
+                
+                // 【關鍵修改】使用 onpointerdown 取代 onclick，反應更即時
+                tile.onpointerdown = (e) => {
+                    e.preventDefault(); // 防止手機端意外選取文字或拖曳
+                    moveTile(num);
+                }; 
+                
+                wrapper.appendChild(tile);
+                board.appendChild(wrapper);
+                tilesDOM[num] = wrapper; 
+            });
+        }
+
+        function updateTilePosition(element, index) {
+            const row = Math.floor(index / currentSize);
+            const col = index % currentSize;
+            element.style.top = `${row * (100 / currentSize)}%`;
+            element.style.left = `${col * (100 / currentSize)}%`;
+        }
+
+        function moveTile(num) {
+            // 如果遊戲已經勝利，就不允許再移動
+            if (isGameWon) return; 
+
+            const numIdx = boardArr.indexOf(num);
+            const emptyIdx = boardArr.indexOf(0);
+            const neighbors = getNeighbors(emptyIdx, currentSize);
+
+            if (neighbors.includes(numIdx)) {
+                // 【關鍵修改】邏輯瞬間替換，不鎖定動畫
+                boardArr[emptyIdx] = num;
+                boardArr[numIdx] = 0;
+
+                moveCount++;
+                document.getElementById('moves').textContent = moveCount;
+
+                // 畫面交給 CSS 去滑動，就算使用者狂點，CSS 也會自動平滑追蹤目標位置
+                updateTilePosition(tilesDOM[num], emptyIdx);
+
+                checkWin();
+            }
+        }
+
+        function checkWin() {
+            const isWin = boardArr.every((num, index) => {
+                if (index === boardArr.length - 1) return num === 0;
+                return num === index + 1;
+            });
+
+            if (isWin) {
+                isGameWon = true; // 鎖定盤面
+                stopTimer();
+                const timeStr = document.getElementById('timer').textContent;
+                
+                // 給予 150 毫秒的延遲，讓最後一步的 CSS 動畫（0.1s）能跑完再跳通知
+                setTimeout(() => {
+                    alert(`恭喜完成！\n尺寸：${currentSize}x${currentSize}\n步數：${moveCount}\n時間：${timeStr}`);
+                    exitGame();
+                }, 150);
+            }
+        }
+
+        window.onload = initMenu;
+    </script>
+</body>
+</html>
