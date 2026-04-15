@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>數字華容道</title>
+    <title>數字華容道 Pro</title>
     <style>
         :root {
             --bg-color: #f0f2f5;
             --primary-color: #007aff;
             --tile-bg: #ffffff;
             --tile-color: #333333;
+            --record-color: #ff9500;
         }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -21,26 +22,37 @@
             min-height: 100vh;
             touch-action: manipulation;
         }
-        h1 { margin-top: 40px; color: #333; }
+        h1 { margin-top: 30px; margin-bottom: 10px; color: #333; }
         
+        /* 選單樣式優化 */
         #menu {
             display: flex;
             flex-direction: column;
-            gap: 12px;
-            margin-top: 20px;
-            width: 80%;
-            max-width: 300px;
+            gap: 10px;
+            width: 90%;
+            max-width: 350px;
+            padding-bottom: 40px;
         }
         .btn {
             background-color: var(--primary-color);
             color: white;
             border: none;
-            padding: 15px;
+            padding: 12px;
             border-radius: 12px;
-            font-size: 18px;
+            font-size: 16px;
             font-weight: bold;
             cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .btn .record-text {
+            font-size: 12px;
+            font-weight: normal;
+            background: rgba(255,255,255,0.2);
+            padding: 2px 8px;
+            border-radius: 10px;
         }
         .btn:active { transform: scale(0.98); }
 
@@ -50,49 +62,61 @@
             align-items: center;
             width: 100%;
         }
-        /* 調整 Header 佈局 */
+        
         .header {
             display: flex;
-            align-items: center;
-            justify-content: space-between;
+            flex-direction: column;
             width: 90%;
             max-width: 400px;
-            margin: 15px 0;
+            margin: 10px 0;
             background: #fff;
-            padding: 10px 15px;
+            padding: 12px;
             border-radius: 12px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
             box-sizing: border-box;
+            gap: 8px;
+        }
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header-bottom {
+            display: flex;
+            justify-content: center;
+            font-size: 13px;
+            color: var(--record-color);
+            font-weight: bold;
         }
         .back-btn { 
             background-color: #ff3b30; 
-            padding: 8px 15px;
+            padding: 6px 12px;
             font-size: 14px;
+            width: auto;
         }
         .stats {
             display: flex;
-            gap: 15px;
-            font-size: 16px;
+            gap: 12px;
+            font-size: 15px;
             font-weight: 600;
-            color: #444;
         }
         
         #board {
             position: relative;
             background-color: #bbb;
             border-radius: 8px;
-            width: 90vmin;
+            width: 95vmin;
             max-width: 400px;
-            height: 90vmin;
+            height: 95vmin;
             max-height: 400px;
             overflow: hidden;
+            border: 2px solid #999;
         }
         
         .tile-wrapper {
             position: absolute;
-            /* 動畫設為 0.1s */
             transition: top 0.1s ease-in-out, left 0.1s ease-in-out;
-            padding: 2.5px; 
+            padding: 1px; /* 大尺寸縮小間距 */
             box-sizing: border-box;
         }
         
@@ -101,15 +125,14 @@
             height: 100%;
             background-color: var(--tile-bg);
             color: var(--tile-color);
-            font-size: 24px;
             font-weight: bold;
-            border-radius: 4px;
+            border-radius: 2px;
             display: flex;
             justify-content: center;
             align-items: center;
             cursor: pointer;
             user-select: none;
-            box-shadow: inset 0 0 2px rgba(0,0,0,0.2);
+            box-shadow: inset 0 0 1px rgba(0,0,0,0.1);
         }
     </style>
 </head>
@@ -121,10 +144,15 @@
 
     <div id="game-container">
         <div class="header">
-            <button class="btn back-btn" onclick="exitGame()">返回</button>
-            <div class="stats">
-                <span>步數: <span id="moves">0</span></span>
-                <span>時間: <span id="timer">00:00</span></span>
+            <div class="header-top">
+                <button class="btn back-btn" onclick="exitGame()">返回</button>
+                <div class="stats">
+                    <span>步數: <span id="moves">0</span></span>
+                    <span>時間: <span id="timer">00:00</span></span>
+                </div>
+            </div>
+            <div id="best-record-display" class="header-bottom">
+                歷史最佳: --:--
             </div>
         </div>
         <div id="board"></div>
@@ -135,20 +163,26 @@
         let boardArr = [];
         let moveCount = 0;
         let tilesDOM = {};
-        
-        // 移除 isAnimating，新增 isGameWon 防止過關後還能亂點
-        let isGameWon = false; 
-
+        let isGameWon = false;
         let seconds = 0;
         let timerId = null;
 
+        // 初始化選單與讀取紀錄
         function initMenu() {
             const menu = document.getElementById('menu');
             menu.innerHTML = '';
-            for (let i = 3; i <= 9; i++) {
+            // 延伸至 12x12
+            for (let i = 3; i <= 12; i++) {
                 const btn = document.createElement('button');
                 btn.className = 'btn';
-                btn.textContent = `${i} x ${i} 拼圖`;
+                
+                const bestTime = localStorage.getItem(`bestTime_${i}`);
+                const recordDisplay = bestTime ? formatTime(parseInt(bestTime)) : "尚未挑戰";
+                
+                btn.innerHTML = `
+                    <span>${i} x ${i} 拼圖</span>
+                    <span class="record-text">最佳: ${recordDisplay}</span>
+                `;
                 btn.onclick = () => startGame(i);
                 menu.appendChild(btn);
             }
@@ -158,10 +192,16 @@
             currentSize = size;
             moveCount = 0;
             seconds = 0;
-            isGameWon = false; // 遊戲開始時重置狀態
+            isGameWon = false;
             
             document.getElementById('moves').textContent = moveCount;
             document.getElementById('timer').textContent = "00:00";
+            
+            // 更新目前關卡的歷史最佳顯示
+            const bestTime = localStorage.getItem(`bestTime_${size}`);
+            document.getElementById('best-record-display').textContent = 
+                bestTime ? `歷史最佳: ${formatTime(parseInt(bestTime))}` : "歷史最佳: 無";
+
             document.getElementById('menu').style.display = 'none';
             document.getElementById('game-container').style.display = 'flex';
             
@@ -170,13 +210,17 @@
             startTimer();
         }
 
+        function formatTime(s) {
+            const mins = Math.floor(s / 60).toString().padStart(2, '0');
+            const secs = (s % 60).toString().padStart(2, '0');
+            return `${mins}:${secs}`;
+        }
+
         function startTimer() {
             if (timerId) clearInterval(timerId);
             timerId = setInterval(() => {
                 seconds++;
-                const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
-                const secs = (seconds % 60).toString().padStart(2, '0');
-                document.getElementById('timer').textContent = `${mins}:${secs}`;
+                document.getElementById('timer').textContent = formatTime(seconds);
             }, 1000);
         }
 
@@ -187,6 +231,7 @@
 
         function exitGame() {
             stopTimer();
+            initMenu(); // 回首頁前重新刷新紀錄顯示
             document.getElementById('menu').style.display = 'flex';
             document.getElementById('game-container').style.display = 'none';
         }
@@ -197,7 +242,7 @@
             boardArr.push(0);
 
             let emptyIdx = totalTiles - 1;
-            const shuffleMoves = size * size * 50;
+            const shuffleMoves = size * size * 60; // 稍微增加打亂強度
 
             for (let i = 0; i < shuffleMoves; i++) {
                 const neighbors = getNeighbors(emptyIdx, size);
@@ -223,6 +268,12 @@
             board.innerHTML = '';
             tilesDOM = {};
 
+            // 動態計算字體大小
+            let fontSize = '24px';
+            if (currentSize >= 10) fontSize = '10px';
+            else if (currentSize >= 7) fontSize = '14px';
+            else if (currentSize >= 5) fontSize = '18px';
+
             boardArr.forEach((num, index) => {
                 if (num === 0) return;
 
@@ -236,11 +287,10 @@
                 const tile = document.createElement('div');
                 tile.className = 'tile';
                 tile.textContent = num;
-                if (currentSize > 6) tile.style.fontSize = '14px';
+                tile.style.fontSize = fontSize;
                 
-                // 【關鍵修改】使用 onpointerdown 取代 onclick，反應更即時
                 tile.onpointerdown = (e) => {
-                    e.preventDefault(); // 防止手機端意外選取文字或拖曳
+                    e.preventDefault();
                     moveTile(num);
                 }; 
                 
@@ -258,7 +308,6 @@
         }
 
         function moveTile(num) {
-            // 如果遊戲已經勝利，就不允許再移動
             if (isGameWon) return; 
 
             const numIdx = boardArr.indexOf(num);
@@ -266,16 +315,11 @@
             const neighbors = getNeighbors(emptyIdx, currentSize);
 
             if (neighbors.includes(numIdx)) {
-                // 【關鍵修改】邏輯瞬間替換，不鎖定動畫
                 boardArr[emptyIdx] = num;
                 boardArr[numIdx] = 0;
-
                 moveCount++;
                 document.getElementById('moves').textContent = moveCount;
-
-                // 畫面交給 CSS 去滑動，就算使用者狂點，CSS 也會自動平滑追蹤目標位置
                 updateTilePosition(tilesDOM[num], emptyIdx);
-
                 checkWin();
             }
         }
@@ -287,13 +331,24 @@
             });
 
             if (isWin) {
-                isGameWon = true; // 鎖定盤面
+                isGameWon = true;
                 stopTimer();
-                const timeStr = document.getElementById('timer').textContent;
                 
-                // 給予 150 毫秒的延遲，讓最後一步的 CSS 動畫（0.1s）能跑完再跳通知
+                // 檢查與儲存最高紀錄
+                const recordKey = `bestTime_${currentSize}`;
+                const prevBest = localStorage.getItem(recordKey);
+                let isNewRecord = false;
+
+                if (!prevBest || seconds < parseInt(prevBest)) {
+                    localStorage.setItem(recordKey, seconds);
+                    isNewRecord = true;
+                }
+
                 setTimeout(() => {
-                    alert(`恭喜完成！\n尺寸：${currentSize}x${currentSize}\n步數：${moveCount}\n時間：${timeStr}`);
+                    const msg = isNewRecord 
+                        ? `🎉 新紀錄！\n時間：${formatTime(seconds)}\n步數：${moveCount}` 
+                        : `恭喜完成！\n時間：${formatTime(seconds)}\n步數：${moveCount}`;
+                    alert(msg);
                     exitGame();
                 }, 150);
             }
