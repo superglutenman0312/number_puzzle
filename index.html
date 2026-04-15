@@ -28,7 +28,6 @@
             justify-content: center; 
             padding-bottom: 8vh; 
             box-sizing: border-box; 
-            /* 【關鍵新增】封印手機瀏覽器的下拉重新整理功能 */
             overscroll-behavior: none; 
         }
         h1 { margin-top: 0; margin-bottom: 20px; color: #333; }
@@ -148,6 +147,7 @@
             box-shadow: inset 0 0 1px rgba(0,0,0,0.1);
         }
 
+        /* --- 排行榜滾輪優化 --- */
         .lb-board {
             background: #fff;
             width: 90%;
@@ -169,20 +169,29 @@
             list-style: none;
             padding: 0;
             margin: 0;
+            /* 開啟滾輪：設定最大高度與溢出滾動 */
+            max-height: 400px; 
+            overflow-y: auto;
+            /* 讓滾輪在 iOS 上更順暢 */
+            -webkit-overflow-scrolling: touch; 
         }
+        /* 美化滾輪樣式 (非必選，但在桌機瀏覽器較好看) */
+        .lb-list::-webkit-scrollbar { width: 6px; }
+        .lb-list::-webkit-scrollbar-track { background: #f1f1f1; }
+        .lb-list::-webkit-scrollbar-thumb { background: #ccc; border-radius: 10px; }
+
         .lb-item {
             display: flex;
             justify-content: space-between;
-            padding: 10px 0;
+            padding: 12px 5px;
             border-bottom: 1px solid #eee;
             font-size: 15px;
         }
         .lb-item:last-child { border-bottom: none; }
-        .lb-rank { font-weight: bold; color: var(--primary-color); width: 30px; }
-        .lb-name { flex-grow: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .lb-score { font-weight: bold; color: #555; }
+        .lb-rank { font-weight: bold; color: var(--primary-color); width: 35px; flex-shrink: 0; }
+        .lb-name { flex-grow: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 10px; }
+        .lb-score { font-weight: bold; color: #555; flex-shrink: 0; text-align: right; }
 
-        /* --- 新增：提示框 (Modal) 樣式 --- */
         #instruction-modal {
             display: none; 
             position: fixed;
@@ -293,7 +302,6 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        // 產生與讀取隱形身份證 (Device ID)
         function getOrCreateDeviceId() {
             let deviceId = localStorage.getItem('klotski_device_id');
             if (!deviceId) {
@@ -304,9 +312,8 @@
         }
         const DEVICE_ID = getOrCreateDeviceId();
 
-        // 遊戲變數
         let currentSize = 3;
-        let pendingSize = 3; // 暫存玩家選擇的尺寸，等確認提示框後才使用
+        let pendingSize = 3; 
         let boardArr = [];
         let moveCount = 0;
         let tilesDOM = {};
@@ -325,61 +332,46 @@
                 btn.className = 'btn';
                 const bestTime = localStorage.getItem(`bestTime_${i}`);
                 const recordDisplay = bestTime ? formatTime(parseInt(bestTime)) : "尚未挑戰";
-                
                 btn.innerHTML = `<span>${i} x ${i} 拼圖</span><span class="record-text">最佳: ${recordDisplay}</span>`;
                 btn.onclick = () => startGame(i);
                 menu.appendChild(btn);
             }
         }
 
-        // --- 第一段：玩家點擊尺寸按鈕 ---
         function startGame(size) {
             pendingSize = size;
             const skipTutorial = localStorage.getItem('klotski_skip_tutorial');
-            
             if (skipTutorial === 'true') {
-                // 如果已經勾選過「不再提醒」，直接開始遊戲
                 startActualGame(size);
             } else {
-                // 否則，跳出提示框 (不開始計時)
-                // 每次跳出時預設把勾勾取消
                 document.getElementById('dont-show-again').checked = false;
                 document.getElementById('instruction-modal').style.display = 'flex';
             }
         }
 
-        // --- 第二段：玩家按下提示框的「開始挑戰」 ---
         function confirmInstruction() {
             const isChecked = document.getElementById('dont-show-again').checked;
             if (isChecked) {
-                // 如果打勾，紀錄在 localStorage 中
                 localStorage.setItem('klotski_skip_tutorial', 'true');
             }
-            
-            // 隱藏提示框，正式載入盤面並開始計時
             document.getElementById('instruction-modal').style.display = 'none';
             startActualGame(pendingSize);
         }
 
-        // --- 第三段：真正載入畫面與計時的邏輯 ---
         function startActualGame(size) {
             currentSize = size;
             moveCount = 0;
             seconds = 0;
             isGameWon = false;
-            
             document.getElementById('moves').textContent = moveCount;
             document.getElementById('timer').textContent = "00:00";
-            
             const bestTime = localStorage.getItem(`bestTime_${size}`);
             document.getElementById('best-record-display').textContent = bestTime ? `歷史最佳: ${formatTime(parseInt(bestTime))}` : "歷史最佳: 無";
-
             document.getElementById('menu').style.display = 'none';
             document.getElementById('game-container').style.display = 'flex';
-            
             generateBoard(size);
             initBoardDOM();
-            startTimer(); // 此時才開始計時
+            startTimer();
         }
 
         function formatTime(s) {
@@ -412,10 +404,8 @@
             const totalTiles = size * size;
             boardArr = Array.from({length: totalTiles - 1}, (_, i) => i + 1);
             boardArr.push(0);
-
             let emptyIdx = totalTiles - 1;
             const shuffleMoves = size * size * 60;
-
             for (let i = 0; i < shuffleMoves; i++) {
                 const neighbors = getNeighbors(emptyIdx, size);
                 const randomNeighbor = neighbors[Math.floor(Math.random() * neighbors.length)];
@@ -439,32 +429,25 @@
             const board = document.getElementById('board');
             board.innerHTML = '';
             tilesDOM = {};
-
             let fontSize = '24px';
             if (currentSize >= 10) fontSize = '10px';
             else if (currentSize >= 7) fontSize = '14px';
             else if (currentSize >= 5) fontSize = '18px';
-
             boardArr.forEach((num, index) => {
                 if (num === 0) return;
-
                 const wrapper = document.createElement('div');
                 wrapper.className = 'tile-wrapper';
                 wrapper.style.width = `${100 / currentSize}%`;
                 wrapper.style.height = `${100 / currentSize}%`;
-                
                 updateTilePosition(wrapper, index);
-
                 const tile = document.createElement('div');
                 tile.className = 'tile';
                 tile.textContent = num;
                 tile.style.fontSize = fontSize;
-                
                 tile.onpointerdown = (e) => {
                     e.preventDefault();
                     moveTile(num);
                 }; 
-                
                 wrapper.appendChild(tile);
                 board.appendChild(wrapper);
                 tilesDOM[num] = wrapper; 
@@ -480,11 +463,9 @@
 
         function moveTile(num) {
             if (isGameWon) return; 
-
             const numIdx = boardArr.indexOf(num);
             const emptyIdx = boardArr.indexOf(0);
             const neighbors = getNeighbors(emptyIdx, currentSize);
-
             if (neighbors.includes(numIdx)) {
                 boardArr[emptyIdx] = num;
                 boardArr[numIdx] = 0;
@@ -500,26 +481,20 @@
                 if (index === boardArr.length - 1) return num === 0;
                 return num === index + 1;
             });
-
             if (isWin) {
                 isGameWon = true;
                 stopTimer();
-                
                 const recordKey = `bestTime_${currentSize}`;
                 const prevBest = localStorage.getItem(recordKey);
-                
                 if (!prevBest || seconds < parseInt(prevBest)) {
                     localStorage.setItem(recordKey, seconds); 
-
                     setTimeout(() => {
                         let playerName = prompt(`🎉 破紀錄啦！\n時間：${formatTime(seconds)}\n步數：${moveCount}\n\n請輸入您的大名以更新世界排行榜：`, "匿名玩家");
-                        
                         if (playerName === null || playerName.trim() === "") {
                             playerName = "匿名玩家";
                         } else {
                             playerName = playerName.trim();
                         }
-                        
                         saveToCloud(playerName, seconds, moveCount);
                     }, 150);
                 } else {
@@ -533,7 +508,6 @@
 
         function saveToCloud(name, time, moves) {
             const collectionName = `records_${currentSize}`;
-            
             db.collection(collectionName).doc(DEVICE_ID).set({
                 name: name,
                 time: time,
@@ -564,12 +538,11 @@
             const size = document.getElementById('lb-size-select').value;
             const content = document.getElementById('lb-content');
             content.innerHTML = '<li style="text-align:center; color:#999; padding:20px;">載入中...</li>';
-
             const collectionName = `records_${size}`;
             
+            // 關鍵修改：移除 .limit(10)，顯示所有成績
             db.collection(collectionName)
               .orderBy("time", "asc")
-              .limit(10)
               .get()
               .then((querySnapshot) => {
                   content.innerHTML = '';
@@ -577,7 +550,6 @@
                       content.innerHTML = '<li style="text-align:center; color:#999; padding:20px;">目前尚無紀錄，快來搶頭香！</li>';
                       return;
                   }
-
                   let rank = 1;
                   querySnapshot.forEach((doc) => {
                       const data = doc.data();
