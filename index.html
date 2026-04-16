@@ -16,6 +16,8 @@
             --tile-color: #333333;
             --record-color: #ff9500;
             --help-color: #34c759;
+            /* 開發者模式高亮樣式 */
+            .tile.dev-highlight { color: #ff3b30 !important; }
         }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -245,7 +247,10 @@
         let isGameWon = false;
         let seconds = 0;
         let timerId = null;
-        
+        let isDevMode = false; // 開發者模式開關
+        let lastDevClickTime = 0;
+        let devClickCount = 0;
+
         // 全域宣告計時器狀態
         let isTimerStarted = false; 
 
@@ -401,6 +406,7 @@
                 board.appendChild(wrapper);
                 tilesDOM[num] = wrapper; 
             });
+            updateDevHighlights();
         }
 
         function updateTilePosition(element, index) {
@@ -450,6 +456,7 @@
 
                 moveCount++; 
                 document.getElementById('moves').textContent = moveCount;
+                updateDevHighlights();
                 checkWin();
             }
         }
@@ -502,9 +509,99 @@
         }
 
         function openLeaderboard() {
+            const lbContainer = document.getElementById('leaderboard-container');
+            lbContainer.style.display = 'flex';
             document.getElementById('menu').style.display = 'none';
-            document.getElementById('leaderboard-container').style.display = 'flex';
             fetchLeaderboard();
+
+            // 升級：改用 onpointerdown 解決手機點擊無效的問題
+            lbContainer.onpointerdown = (e) => {
+                // 排除法：只要你點擊的「不是」按鈕，也「不是」下拉選單，就通通算數！
+                if (e.target.closest('button') || e.target.closest('select')) {
+                    return; 
+                }
+
+                const currentTime = Date.now();
+                // 只要兩次點擊的間隔小於 800 毫秒 (0.8秒) 就視為連點
+                if (currentTime - lastDevClickTime < 800) {
+                    devClickCount++;
+                } else {
+                    // 如果間隔太久，就重新從 1 開始算
+                    devClickCount = 1;
+                }
+                lastDevClickTime = currentTime;
+
+                if (devClickCount === 3) {
+                    isDevMode = !isDevMode; // 切換開關
+                    alert(isDevMode ? "🛠️ 已進入開發者模式" : "🔒 已關閉開發者模式");
+                    devClickCount = 0; // 觸發後將次數歸零
+                }
+            };
+        }
+
+        function updateDevHighlights() {
+            // 先清除所有高亮
+            Object.values(tilesDOM).forEach(wrapper => {
+                wrapper.querySelector('.tile').classList.remove('dev-highlight');
+            });
+
+            if (!isDevMode) return;
+
+            // --- 第一階段：處理前 (N-2) 列 (Row by Row) ---
+            let targetRow = -1;
+            for (let r = 0; r < currentSize - 2; r++) {
+                let isRowComplete = true;
+                for (let c = 0; c < currentSize; c++) {
+                    const expectedNum = r * currentSize + c + 1;
+                    if (boardArr[r * currentSize + c] !== expectedNum) {
+                        isRowComplete = false;
+                        break;
+                    }
+                }
+                if (!isRowComplete) {
+                    targetRow = r;
+                    break;
+                }
+            }
+
+            // 如果還有前幾列沒拚好，優先標示該列
+            if (targetRow !== -1) {
+                const startNum = targetRow * currentSize + 1;
+                const endNum = (targetRow + 1) * currentSize;
+                for (let n = startNum; n <= endNum; n++) {
+                    if (tilesDOM[n]) {
+                        tilesDOM[n].querySelector('.tile').classList.add('dev-highlight');
+                    }
+                }
+                return; // 優先處理 Row，處理完才進下一階段
+            }
+
+            // --- 第二階段：處理最後兩列的前 (N-2) 欄 (Column by Column) ---
+            let targetCol = -1;
+            for (let c = 0; c < currentSize - 2; c++) {
+                // 檢查最後兩列中，第 c 欄的兩個位置
+                const idxTop = (currentSize - 2) * currentSize + c;    // 倒數第二列
+                const idxBottom = (currentSize - 1) * currentSize + c; // 最後一列
+                
+                const valTop = idxTop + 1;
+                const valBottom = idxBottom + 1;
+
+                if (boardArr[idxTop] !== valTop || boardArr[idxBottom] !== valBottom) {
+                    targetCol = c;
+                    break;
+                }
+            }
+
+            // 如果找到了還沒拚好的欄位，標示該欄位的兩個數字
+            if (targetCol !== -1) {
+                const valTop = ((currentSize - 2) * currentSize + targetCol) + 1;
+                const valBottom = ((currentSize - 1) * currentSize + targetCol) + 1;
+                
+                if (tilesDOM[valTop]) tilesDOM[valTop].querySelector('.tile').classList.add('dev-highlight');
+                if (tilesDOM[valBottom]) tilesDOM[valBottom].querySelector('.tile').classList.add('dev-highlight');
+            }
+            
+            // 如果連這部分都跑完，代表只剩下右下角 2x2，此時不會有任何紅字
         }
 
         function closeLeaderboard() {
