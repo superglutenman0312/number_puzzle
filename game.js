@@ -280,9 +280,9 @@ function fetchLeaderboard() {
         content.innerHTML = snap.empty ? '<li>尚無紀錄</li>' : '';
         let r = 1; snap.forEach((doc) => {
             const d = doc.data();
-            content.innerHTML += `<li class="lb-item"><span class="lb-rank">#${r++}</span><span class="lb-name">${d.name}</span><span class="lb-score">${formatTime(d.time)}</span></li>`;
+            // 在這裡補上了 (${d.moves}步)
+            content.innerHTML += `<li class="lb-item"><span class="lb-rank">#${r++}</span><span class="lb-name">${d.name}</span><span class="lb-score">${formatTime(d.time)} (${d.moves}步)</span></li>`;
         });
     });
 }
-
 window.onload = initMenu;
