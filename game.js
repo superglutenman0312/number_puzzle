@@ -268,15 +268,30 @@ function stopTimer() { clearInterval(timerId); timerId = null; }
 function exitGame() { stopTimer(); initMenu(); document.getElementById('menu').style.display = 'flex'; document.getElementById('game-container').style.display = 'none'; }
 
 function saveToCloud(name, time, moves) {
-    db.collection(`records_${currentSize}`).doc(DEVICE_ID).set({ name, time, moves, timestamp: firebase.firestore.FieldValue.serverTimestamp() })
-      .then(() => { alert("已上傳排行榜！"); exitGame(); });
+    // 判斷是否為腳本 (神仙)：時間為 0 (防呆) 或 每秒大於 10 步
+    let collectionName = `records_${currentSize}`;
+    let alertMsg = "已上傳排行榜！";
+    
+    if (time <= 0 || (moves / time) > 10) {
+        collectionName = `god_records_${currentSize}`;
+        alertMsg = "速度驚人！已上傳神仙榜！";
+    }
+
+    db.collection(collectionName).doc(DEVICE_ID).set({ name, time, moves, timestamp: firebase.firestore.FieldValue.serverTimestamp() })
+      .then(() => { alert(alertMsg); exitGame(); });
 }
 
 function fetchLeaderboard() {
     const size = document.getElementById('lb-size-select').value;
+    
+    // 取得當前選擇的排行榜類型 (一般 or 神仙)
+    const typeSelect = document.getElementById('lb-type-select');
+    const isGodMode = typeSelect ? typeSelect.value === 'god' : false;
+    const collectionName = isGodMode ? `god_records_${size}` : `records_${size}`;
+
     const content = document.getElementById('lb-content');
     content.innerHTML = '<li>載入中...</li>';
-    db.collection(`records_${size}`).orderBy("time", "asc").get().then((snap) => {
+    db.collection(collectionName).orderBy("time", "asc").get().then((snap) => {
         content.innerHTML = snap.empty ? '<li>尚無紀錄</li>' : '';
         let r = 1; snap.forEach((doc) => {
             const d = doc.data();

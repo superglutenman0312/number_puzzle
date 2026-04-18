@@ -42,6 +42,11 @@
             <button class="btn back-btn" onclick="closeLeaderboard()">返回</button>
         </div>
         <div class="lb-board">
+            <select class="lb-selector" id="lb-type-select" onchange="fetchLeaderboard()" style="margin-bottom: 10px;">
+                <option value="normal">人類榜</option>
+                <option value="god">神仙榜</option>
+            </select>
+            
             <select class="lb-selector" id="lb-size-select" onchange="fetchLeaderboard()">
                 <option value="3">3 x 3 排行榜</option>
                 <option value="4">4 x 4 排行榜</option>
