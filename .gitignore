@@ -2,3 +2,4 @@ back.html
 serviceAccountKey.json
 clean_records.py
 solver/
+psyduck_solver/
