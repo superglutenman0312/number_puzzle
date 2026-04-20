@@ -56,24 +56,15 @@ function initMenu() {
 }
 
 function openHelp() {
-    document.getElementById('instruction-modal').style.display = 'flex';
+    const modal = document.getElementById('instruction-modal');
+    modal.style.display = 'flex';
     document.getElementById('checkbox-container').style.display = 'none'; 
     document.getElementById('modal-action-btn').textContent = '我知道了';
-    document.getElementById('modal-action-btn').onclick = closeHelp; 
-}
+    document.getElementById('modal-action-btn').onclick = closeHelp;
 
-function closeHelp() {
-    document.getElementById('instruction-modal').style.display = 'none';
-}
-
-function openLeaderboard() {
-    const lbContainer = document.getElementById('leaderboard-container');
-    lbContainer.style.display = 'flex';
-    document.getElementById('menu').style.display = 'none';
-    fetchLeaderboard();
-
-    lbContainer.onpointerdown = (e) => {
-        if (e.target.closest('button') || e.target.closest('select')) return; 
+    // 開發者模式：在說明視窗內連點三下
+    modal.onpointerdown = (e) => {
+        if (e.target.closest('button')) return;
         const currentTime = Date.now();
         if (currentTime - lastDevClickTime < 800) {
             devClickCount++;
@@ -87,6 +78,17 @@ function openLeaderboard() {
             devClickCount = 0;
         }
     };
+}
+
+function closeHelp() {
+    document.getElementById('instruction-modal').style.display = 'none';
+}
+
+function openLeaderboard() {
+    const lbContainer = document.getElementById('leaderboard-container');
+    lbContainer.style.display = 'flex';
+    document.getElementById('menu').style.display = 'none';
+    fetchLeaderboard();
 }
 
 function closeLeaderboard() {
