@@ -1,6 +1,5 @@
 back.html
 serviceAccountKey.json
-merge_god_records.py
-clean_records
 solver/
 psyduck_solver/
+*.py
