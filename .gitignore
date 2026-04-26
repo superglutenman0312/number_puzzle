@@ -1,5 +1,5 @@
 back.html
 serviceAccountKey.json
-clean_records.py
+*.py
 solver/
 psyduck_solver/
